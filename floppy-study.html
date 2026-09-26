@@ -1,0 +1,2214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Floppy Study</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth.js/1.6.0/mammoth.browser.min.js"></script>
+<style>
+  :root{
+    --bg:#FAFAF7;
+    --panel:#FFFFFF;
+    --ink:#191A17;
+    --ink-soft:#78776D;
+    --line:#E7E4DA;
+    --accent:#2F4FD1;
+    --accent-dark:#233CA3;
+    --error:#B23A3A;
+    --radius:5px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+    line-height:1.55;
+  }
+  h1,h2,h3{
+    font-family:'Source Serif 4', serif;
+    font-weight:600;
+    margin:0 0 0.4em 0;
+    color:var(--ink);
+  }
+  .wrap{
+    max-width:660px;
+    margin:0 auto;
+    padding:36px 20px 90px;
+  }
+  /* Header */
+  .app-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding-bottom:22px;
+    margin-bottom:28px;
+    border-bottom:1px solid var(--line);
+  }
+  .brand{
+    display:flex; align-items:center; gap:9px;
+    background:none; border:none; cursor:pointer;
+    padding:4px 2px;
+  }
+  .brand svg{flex-shrink:0;}
+  .brand-name{
+    font-family:'Source Serif 4', serif;
+    font-size:1.2rem;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .saved-link{
+    display:flex; align-items:center; gap:6px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:20px;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:0.85rem;
+    color:var(--ink);
+    cursor:pointer;
+    padding:8px 16px;
+  }
+  .saved-link:hover{border-color:var(--accent); color:var(--accent-dark);}
+
+  .stepper{
+    display:flex;
+    align-items:flex-start;
+    margin-bottom:32px;
+  }
+  .stepper .step{
+    display:flex;
+    align-items:center;
+    background:none;
+    border:none;
+    font-family:'IBM Plex Sans', sans-serif;
+    cursor:default;
+    padding:0;
+  }
+  .stepper .step.clickable{cursor:pointer;}
+  .stepper .step-circle{
+    width:24px; height:24px;
+    border-radius:50%;
+    border:1.5px solid var(--line);
+    color:var(--ink-soft);
+    font-size:0.75rem;
+    font-weight:600;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+    background:var(--panel);
+  }
+  .stepper .step-label{
+    font-size:0.78rem;
+    color:var(--ink-soft);
+    margin-left:8px;
+    white-space:nowrap;
+  }
+  .stepper .step-connector{
+    flex:1;
+    height:1.5px;
+    background:var(--line);
+    margin:0 8px;
+    min-width:14px;
+  }
+  .stepper .step.active .step-circle{
+    border-color:var(--accent);
+    background:var(--accent);
+    color:#fff;
+  }
+  .stepper .step.active .step-label{color:var(--ink); font-weight:600;}
+  .stepper .step.done .step-circle{
+    border-color:var(--ink);
+    background:var(--ink);
+    color:#fff;
+  }
+  .stepper .step.done .step-label{color:var(--ink);}
+  .stepper .step.done ~ .step-connector, .stepper .step-connector.done{background:var(--ink);}
+
+  .screen{display:none;}
+  .screen.active{display:block;}
+
+  section.block{margin-bottom:34px;}
+  .lede{color:var(--ink-soft); font-size:0.97rem; max-width:52ch; margin-bottom:24px;}
+
+  /* Dropzone */
+  .dropzone{
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    background:var(--panel);
+    padding:30px 20px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s ease;
+  }
+  .dropzone:hover, .dropzone.drag{border-color:var(--accent);}
+  .dropzone .dz-title{font-weight:600; margin-bottom:4px;}
+  .dropzone .dz-sub{color:var(--ink-soft); font-size:0.84rem;}
+  input[type=file]{display:none;}
+
+  .file-list{margin-top:14px; display:flex; flex-direction:column;}
+  .file-chip{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 2px;
+    border-bottom:1px solid var(--line);
+    font-size:0.87rem;
+  }
+  .file-chip .fc-name{display:flex; align-items:center; gap:10px; overflow:hidden;}
+  .file-chip .fc-ext{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.65rem;
+    color:var(--ink-soft);
+    border:1px solid var(--line);
+    padding:2px 6px;
+    border-radius:3px;
+    flex-shrink:0;
+  }
+  .file-chip .fc-label{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .file-chip .fc-size{
+    font-size:0.76rem;
+    color:var(--ink-soft);
+    flex-shrink:0;
+    margin-left:2px;
+  }
+  .file-chip .fc-remove{
+    background:none; border:none; color:var(--ink-soft); cursor:pointer;
+    font-size:1rem; line-height:1; padding:2px 6px;
+  }
+  .file-chip .fc-remove:hover{color:var(--error);}
+
+  .file-summary{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-top:10px;
+    font-size:0.8rem;
+    color:var(--ink-soft);
+  }
+  .file-summary button{
+    background:none; border:none; color:var(--ink-soft);
+    font-family:inherit; font-size:0.8rem; cursor:pointer;
+    text-decoration:underline;
+    padding:2px;
+  }
+  .file-summary button:hover{color:var(--error);}
+
+  .file-progress-list{
+    max-width:420px;
+    margin:26px auto 0;
+    text-align:left;
+  }
+  .fp-row{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 2px;
+    font-size:0.85rem;
+    color:var(--ink-soft);
+  }
+  .fp-row .fp-icon{
+    width:16px; flex-shrink:0; text-align:center;
+    font-size:0.8rem;
+  }
+  .fp-row.fp-done{color:var(--ink);}
+  .fp-row.fp-done .fp-icon{color:var(--accent);}
+  .fp-row.fp-active .fp-icon{color:var(--accent);}
+  .fp-row.fp-error .fp-icon{color:var(--error);}
+  .fp-row.fp-error{color:var(--error);}
+  .fp-row .fp-name{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+  textarea{
+    width:100%;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:0.92rem;
+    padding:12px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    background:var(--panel);
+    color:var(--ink);
+    resize:vertical;
+    min-height:88px;
+  }
+  textarea:focus, input:focus, button:focus-visible{
+    outline:2px solid var(--accent);
+    outline-offset:1px;
+  }
+  label.field-label{
+    display:block;
+    font-size:0.84rem;
+    font-weight:600;
+    margin-bottom:10px;
+    color:var(--ink);
+  }
+
+  /* Mode selector — minimal rows, not boxes */
+  .mode-list{border-top:1px solid var(--line);}
+  .mode-row{
+    display:flex; align-items:flex-start; gap:12px;
+    width:100%;
+    text-align:left;
+    background:none;
+    border:none;
+    border-bottom:1px solid var(--line);
+    padding:16px 2px;
+    cursor:pointer;
+    font-family:inherit;
+    color:var(--ink);
+  }
+  .mode-row .dot{
+    width:9px; height:9px; border-radius:50%;
+    border:1.5px solid var(--ink-soft);
+    margin-top:5px;
+    flex-shrink:0;
+  }
+  .mode-row.selected .dot{border-color:var(--accent); background:var(--accent);}
+  .mode-row.selected h3{color:var(--accent-dark);}
+  .mode-row h3{font-size:1rem; margin-bottom:2px;}
+  .mode-row p{margin:0; color:var(--ink-soft); font-size:0.85rem;}
+
+  .count-row{display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;}
+  .count-btn{
+    border:1px solid var(--line);
+    background:var(--panel);
+    border-radius:var(--radius);
+    padding:9px 18px;
+    cursor:pointer;
+    font-family:inherit;
+    font-size:0.88rem;
+    color:var(--ink);
+  }
+  .count-btn.selected{
+    border-color:var(--accent);
+    background:var(--accent);
+    color:#fff;
+  }
+  .count-hint{font-size:0.8rem; color:var(--ink-soft); margin-top:10px;}
+
+  button.primary{
+    background:var(--ink);
+    color:#fff;
+    border:none;
+    padding:12px 22px;
+    border-radius:var(--radius);
+    font-family:inherit;
+    font-size:0.95rem;
+    font-weight:600;
+    cursor:pointer;
+  }
+  button.primary:hover{background:var(--accent-dark);}
+  button.primary:disabled{background:#CFCDC2; cursor:not-allowed;}
+  button.ghost{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--ink);
+    padding:12px 20px;
+    border-radius:var(--radius);
+    font-family:inherit;
+    font-size:0.95rem;
+    cursor:pointer;
+  }
+  button.ghost:hover{border-color:var(--ink-soft);}
+  .action-row{display:flex; gap:10px; margin-top:26px; align-items:center; flex-wrap:wrap;}
+  .hint{font-size:0.82rem; color:var(--ink-soft);}
+
+  /* Processing */
+  .proc-box{
+    padding:50px 10px;
+    text-align:center;
+  }
+  .spinner{
+    width:22px; height:22px;
+    border:2px solid var(--line);
+    border-top-color:var(--accent);
+    border-radius:50%;
+    margin:0 auto 18px;
+    animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .proc-status{font-size:0.9rem; color:var(--ink-soft);}
+
+  .error-box{
+    border-left:2px solid var(--error);
+    color:var(--error);
+    padding:10px 14px;
+    font-size:0.88rem;
+    margin-bottom:16px;
+    background:#FBF0EF;
+  }
+  .notice-box{
+    border-left:2px solid var(--amber, #A15C2B);
+    color:#7A4A1E;
+    padding:10px 14px;
+    font-size:0.85rem;
+    margin-bottom:18px;
+    background:#FBF3E9;
+  }
+
+  /* Quiz */
+  .progress-track{
+    height:2px;
+    background:var(--line);
+    margin-bottom:10px;
+  }
+  .progress-fill{
+    height:100%;
+    background:var(--accent);
+    transition:width .3s ease;
+  }
+  .quiz-meta{
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:0.8rem; color:var(--ink-soft);
+    margin-bottom:26px;
+  }
+  .exit-quiz-link{
+    background:none; border:1px solid var(--line); border-radius:var(--radius);
+    color:var(--ink-soft); font-family:inherit; font-size:0.78rem;
+    padding:5px 12px; cursor:pointer;
+  }
+  .exit-quiz-link:hover{border-color:var(--error); color:var(--error);}
+  .question-card{padding:0;}
+  .question-text{font-size:1.2rem; font-family:'Source Serif 4', serif; margin-bottom:22px; line-height:1.5;}
+  .options{display:flex; flex-direction:column; gap:9px;}
+  .option-btn{
+    text-align:left;
+    padding:13px 16px;
+    border:1px solid var(--line);
+    background:var(--panel);
+    border-radius:var(--radius);
+    font-family:inherit;
+    font-size:0.95rem;
+    color:var(--ink);
+    cursor:pointer;
+  }
+  .option-btn:hover:not(:disabled){border-color:var(--accent);}
+  .option-btn:disabled{cursor:default;}
+  .option-btn.correct{
+    border-color:var(--accent);
+    border-width:1.5px;
+  }
+  .option-btn.incorrect{
+    border-color:var(--error);
+    border-width:1.5px;
+  }
+  .id-input-row{display:flex; gap:10px;}
+  .id-input-row input[type=text]{
+    flex:1;
+    padding:13px 14px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    font-family:inherit;
+    font-size:0.95rem;
+  }
+  .feedback{
+    margin-top:22px;
+    padding-top:18px;
+    border-top:1px solid var(--line);
+    font-size:0.9rem;
+  }
+  .feedback .fb-verdict{
+    font-weight:600;
+    margin-bottom:8px;
+  }
+  .feedback.correct .fb-verdict{color:var(--accent-dark);}
+  .feedback.incorrect .fb-verdict{color:var(--error);}
+  .feedback .fb-why-label{
+    font-size:0.76rem;
+    text-transform:uppercase;
+    letter-spacing:0.03em;
+    color:var(--ink-soft);
+    margin-bottom:4px;
+  }
+  .feedback .fb-why{color:var(--ink); font-size:0.92rem;}
+
+  /* Results */
+  .score-panel{
+    padding:8px 0 28px;
+    text-align:center;
+    border-bottom:1px solid var(--line);
+    margin-bottom:26px;
+  }
+  .score-num{font-family:'Source Serif 4', serif; font-size:2.8rem; font-weight:700; color:var(--ink);}
+  .score-label{color:var(--ink-soft); font-size:0.9rem;}
+  .review-item{
+    border-bottom:1px solid var(--line);
+    padding:16px 0;
+  }
+  .review-item:last-child{border-bottom:none;}
+  .review-q{font-weight:600; margin-bottom:8px; font-size:0.96rem;}
+  .review-a{font-size:0.87rem; color:var(--ink-soft); margin-bottom:6px;}
+  .review-a.wrong{color:var(--error);}
+  .review-a.right{color:var(--accent-dark);}
+  .review-why{font-size:0.85rem; color:var(--ink-soft); padding-left:22px;}
+  .badge-icon{display:inline-block; width:16px; text-align:center; margin-right:4px;}
+
+  /* Saved list */
+  .saved-item{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:16px 2px;
+    border-bottom:1px solid var(--line);
+    gap:14px;
+  }
+  .saved-item .si-info{overflow:hidden;}
+  .saved-item .si-title{font-weight:600; font-size:0.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .saved-item .si-meta{font-size:0.8rem; color:var(--ink-soft); margin-top:2px;}
+  .saved-item .si-actions{display:flex; gap:8px; flex-shrink:0;}
+  .si-actions button{
+    background:none; border:1px solid var(--line); border-radius:var(--radius);
+    padding:7px 12px; font-family:inherit; font-size:0.82rem; cursor:pointer; color:var(--ink);
+  }
+  .si-actions button:hover{border-color:var(--ink-soft);}
+  .si-actions button.danger:hover{border-color:var(--error); color:var(--error);}
+  .empty-note{color:var(--ink-soft); font-size:0.9rem; padding:20px 0;}
+
+  #quizModePanel, #studyModePanel{
+    border-top:1px solid var(--line);
+    padding-top:6px;
+    margin-top:6px;
+  }
+  .mode-row.sub{padding:14px 2px;}
+
+  .study-guide{
+    font-size:0.96rem;
+    color:var(--ink);
+  }
+  .study-guide h2{
+    font-size:1.15rem;
+    margin:26px 0 10px;
+    padding-top:16px;
+    border-top:1px solid var(--line);
+  }
+  .study-guide h2:first-child{border-top:none; padding-top:0; margin-top:0;}
+  .study-guide h3{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:0.98rem;
+    font-weight:600;
+    margin:16px 0 6px;
+  }
+  .study-guide p{margin:0 0 12px; line-height:1.6;}
+  .study-guide ul{margin:0 0 14px; padding-left:20px;}
+  .study-guide li{margin-bottom:6px; line-height:1.55;}
+  .study-guide strong{font-weight:600;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app-header">
+    <button class="brand" id="brandHomeBtn" title="Back to materials">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2.5" y="2.5" width="19" height="19" rx="1.5" stroke="#191A17" stroke-width="1.4"/>
+        <path d="M6.5 2.5H16V7.5H6.5V2.5Z" stroke="#191A17" stroke-width="1.4"/>
+        <rect x="13" y="3.3" width="1.6" height="3.2" fill="#191A17"/>
+        <rect x="6" y="13.5" width="12" height="7.5" rx="0.8" stroke="#191A17" stroke-width="1.4"/>
+      </svg>
+      <span class="brand-name">Floppy Study</span>
+    </button>
+    <button class="saved-link" id="savedLinkBtn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.6"/></svg>
+      Saved quizzes
+    </button>
+  </header>
+
+  <div class="stepper" id="stepper">
+    <div class="step" data-step="upload"><span class="step-circle">1</span><span class="step-label">Materials</span></div>
+    <div class="step-connector"></div>
+    <div class="step" data-step="mode"><span class="step-circle">2</span><span class="step-label">Study or Quiz</span></div>
+    <div class="step-connector"></div>
+    <div class="step" data-step="quiz"><span class="step-circle">3</span><span class="step-label">Quiz</span></div>
+    <div class="step-connector"></div>
+    <div class="step" data-step="results"><span class="step-circle">4</span><span class="step-label">Results</span></div>
+  </div>
+
+
+  <!-- SCREEN: UPLOAD -->
+  <div class="screen active" id="screen-upload">
+    <section class="block">
+      <h1>Turn your materials into a quiz</h1>
+      <p class="lede">Add slides, photos of your notes, PDFs, or plain text. Floppy Study reads what you give it and writes questions from that content only.</p>
+
+      <div class="dropzone" id="dropzone">
+        <div class="dz-title">Drop files here, or click to browse</div>
+        <div class="dz-sub">PowerPoint (.pptx), images (.png/.jpg), PDF, Word (.docx), or .txt / .md — add as many files as you need</div>
+        <input type="file" id="fileInput" multiple accept=".pptx,.pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,.gif">
+      </div>
+      <div class="file-list" id="fileList"></div>
+      <div class="file-summary" id="fileSummary" style="display:none;"></div>
+    </section>
+
+    <section class="block">
+      <label class="field-label" for="pasteNotes">Or paste notes directly (optional)</label>
+      <textarea id="pasteNotes" placeholder="Paste any extra text — a definition list, a paragraph from a textbook, lecture notes…"></textarea>
+    </section>
+
+    <div id="uploadError"></div>
+    <div class="action-row">
+      <button class="primary" id="toModeBtn" disabled>Continue</button>
+      <span class="hint" id="uploadHint">Add at least one file or paste some notes to continue.</span>
+    </div>
+  </div>
+
+  <!-- SCREEN: MODE -->
+  <div class="screen" id="screen-mode">
+    <section class="block">
+      <h1>Study first, or go straight to the quiz?</h1>
+      <p class="lede">Pick a path. You can always come back and try the other one with the same materials.</p>
+      <div class="mode-list">
+        <button class="mode-row" data-topmode="study">
+          <span class="dot"></span>
+          <span><h3>Study mode</h3><p>Get a written study guide from your materials to read through first.</p></span>
+        </button>
+        <button class="mode-row" data-topmode="quiz">
+          <span class="dot"></span>
+          <span><h3>Quiz mode</h3><p>Skip ahead and get tested with multiple choice or identification questions.</p></span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Quiz mode sub-panel -->
+    <div id="quizModePanel" style="display:none;">
+      <section class="block">
+        <label class="field-label">Question format</label>
+        <div class="mode-list">
+          <button class="mode-row sub" data-mode="mc">
+            <span class="dot"></span>
+            <span><h3>Multiple choice</h3><p>Pick the right answer from four options. Good for fast review.</p></span>
+          </button>
+          <button class="mode-row sub" data-mode="id">
+            <span class="dot"></span>
+            <span><h3>Identification</h3><p>Type the answer yourself. Good for testing real recall.</p></span>
+          </button>
+          <button class="mode-row sub" data-mode="tf">
+            <span class="dot"></span>
+            <span><h3>True or false</h3><p>Judge whether a statement is correct. Good for quick drilling.</p></span>
+          </button>
+          <button class="mode-row sub" data-mode="matching">
+            <span class="dot"></span>
+            <span><h3>Matching</h3><p>Match each term to its correct definition, one pair at a time.</p></span>
+          </button>
+          <button class="mode-row sub" data-mode="fillblank">
+            <span class="dot"></span>
+            <span><h3>Fill in the blank</h3><p>Complete a sentence from the material with the missing word or phrase.</p></span>
+          </button>
+        </div>
+      </section>
+
+      <section class="block">
+        <label class="field-label">Difficulty</label>
+        <div class="count-row">
+          <button class="count-btn diff-btn" data-difficulty="easy">Easy</button>
+          <button class="count-btn diff-btn selected" data-difficulty="medium">Medium</button>
+          <button class="count-btn diff-btn" data-difficulty="hard">Hard</button>
+        </div>
+        <div class="count-hint">Easy sticks to definitions and basic facts. Medium tests understanding and application. Hard asks for analysis, comparisons, and reasoning.</div>
+      </section>
+
+      <section class="block">
+        <label class="field-label">Number of questions</label>
+        <div class="count-row">
+          <button class="count-btn" data-count="10">10</button>
+          <button class="count-btn" data-count="20">20</button>
+          <button class="count-btn" data-count="50">50</button>
+          <button class="count-btn" data-count="100">100</button>
+        </div>
+        <div class="count-hint">Larger sets take more requests to generate and use more of your Claude usage — if you hit a limit partway through, you'll still get to keep whatever was already made.</div>
+      </section>
+    </div>
+
+    <!-- Study mode sub-panel -->
+    <div id="studyModePanel" style="display:none;">
+      <section class="block">
+        <p class="lede">Floppy Study scans your materials from start to finish and writes a full study guide — organized by topic, with key terms and details — so nothing important gets left out. Every section is checked against your material, not made up.</p>
+      </section>
+    </div>
+
+    <div id="modeError"></div>
+    <div class="action-row">
+      <button class="ghost" id="backToUploadBtn">&larr; Back</button>
+      <button class="primary" id="generateBtn" disabled>Continue</button>
+    </div>
+  </div>
+
+  <!-- SCREEN: PROCESSING -->
+  <div class="screen" id="screen-processing">
+    <div class="proc-box">
+      <div class="spinner"></div>
+      <div class="proc-status" id="procStatus">Reading your materials…</div>
+    </div>
+    <div class="file-progress-list" id="fileProgressList"></div>
+    <div class="action-row" id="cancelRow" style="justify-content:center; display:none;">
+      <button class="ghost" id="cancelProcessingBtn">Cancel</button>
+    </div>
+  </div>
+
+  <!-- SCREEN: STUDY GUIDE -->
+  <div class="screen" id="screen-study">
+    <section class="block">
+      <h1>Your study guide</h1>
+      <p class="lede">Read through this, then take the quiz whenever you're ready.</p>
+      <div id="studyNotice"></div>
+      <div class="study-guide" id="studyGuideContent"></div>
+    </section>
+    <div class="action-row">
+      <button class="ghost" id="studyBackBtn">&larr; Back to materials</button>
+      <button class="primary" id="studyToQuizBtn">Take the quiz on this</button>
+    </div>
+  </div>
+
+  <!-- SCREEN: QUIZ -->
+  <div class="screen" id="screen-quiz">
+    <div id="quizNotice"></div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="quiz-meta">
+      <span class="quiz-meta-left"><span id="quizPosition">Question 1 of 10</span> &middot; <span id="quizScore">Score: 0</span></span>
+      <button class="exit-quiz-link" id="exitQuizBtn">Exit</button>
+    </div>
+    <div class="question-card">
+      <div class="question-text" id="questionText"></div>
+      <div class="options" id="optionsArea"></div>
+      <div class="feedback" id="feedback" style="display:none;"></div>
+    </div>
+    <div class="action-row" id="quizActionRow" style="display:none;">
+      <button class="primary" id="nextBtn">Next question</button>
+    </div>
+  </div>
+
+  <!-- SCREEN: RESULTS -->
+  <div class="screen" id="screen-results">
+    <div class="score-panel">
+      <div class="score-num" id="finalScore">0/0</div>
+      <div class="score-label">correct answers</div>
+    </div>
+    <h2>Review</h2>
+    <div id="reviewList"></div>
+    <div class="action-row">
+      <button class="primary" id="retryBtn">Try again (same questions)</button>
+      <button class="ghost" id="practiceMissedBtn" style="display:none;">Practice missed questions</button>
+      <button class="ghost" id="newMaterialBtn">Start over with new materials</button>
+    </div>
+  </div>
+
+  <!-- SCREEN: SAVED -->
+  <div class="screen" id="screen-saved">
+    <section class="block">
+      <h1>Saved quizzes</h1>
+      <p class="lede">Every quiz you finish is saved here automatically, so you can revisit it or retake it later.</p>
+      <div id="savedList"></div>
+    </section>
+    <div class="action-row">
+      <button class="ghost" id="savedBackBtn">&larr; Back</button>
+    </div>
+  </div>
+
+  <!-- SCREEN: SAVED REVIEW -->
+  <div class="screen" id="screen-saved-review">
+    <section class="block">
+      <h1 id="savedReviewTitle">Quiz review</h1>
+      <p class="lede" id="savedReviewMeta"></p>
+      <div id="savedReviewList"></div>
+    </section>
+    <div class="action-row">
+      <button class="primary" id="savedRetakeBtn">Retake this quiz</button>
+      <button class="ghost" id="savedPracticeMissedBtn" style="display:none;">Practice missed questions</button>
+      <button class="ghost" id="savedReviewBackBtn">&larr; Back to saved</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  const MAX_CONTEXT_CHARS = 70000;
+  const MAX_IMAGES = 14;
+  const MAX_IMAGE_DIM = 1000;
+  const BATCH_SIZE = 6;
+  const BATCH_DELAY_MS = 250;
+  const STORAGE_KEY = 'floppystudy:sessions';
+
+  function sleep(ms){ return new Promise(res => setTimeout(res, ms)); }
+
+  // Single place that talks to the API. Handles network errors and non-JSON
+  // error bodies cleanly instead of letting a raw parse exception escape —
+  // this is what previously surfaced as "The string did not match the
+  // expected pattern" in Safari when a response wasn't valid JSON.
+  async function callClaudeAPI(systemPrompt, content, maxTokens){
+    let response;
+    try{
+      response = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: maxTokens || 1000,
+          system: systemPrompt,
+          messages: [{ role:'user', content }]
+        })
+      });
+    }catch(networkErr){
+      const err = new Error('Could not reach the assistant — check your connection and try again.');
+      err.status = 0;
+      throw err;
+    }
+    let data = null;
+    try{
+      data = await response.json();
+    }catch(parseErr){
+      const err = new Error(`Unexpected response from the assistant (HTTP ${response.status}).`);
+      err.status = response.status;
+      throw err;
+    }
+    if(!response.ok){
+      const msg = (data && data.error && data.error.message) ? data.error.message : `Request failed (HTTP ${response.status}).`;
+      const err = new Error(msg);
+      err.status = response.status;
+      throw err;
+    }
+    return (data.content || []).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+  }
+
+  // Splits long material into bounded chunks (breaking near paragraph/sentence
+  // boundaries where possible) so a single huge document never has to be resent
+  // in full on every one of many question batches — this is what was causing
+  // failures with a big file plus a large question count.
+  function splitIntoChunks(text, chunkSize){
+    const trimmed = (text || '').trim();
+    if(!trimmed) return [];
+    if(trimmed.length <= chunkSize) return [trimmed];
+    const chunks = [];
+    let start = 0;
+    while(start < trimmed.length){
+      let end = Math.min(start + chunkSize, trimmed.length);
+      if(end < trimmed.length){
+        const searchStart = start + Math.floor(chunkSize * 0.7);
+        const slice = trimmed.slice(searchStart, end);
+        const lastBreak = Math.max(slice.lastIndexOf('\n\n'), slice.lastIndexOf('. '));
+        if(lastBreak > 0) end = searchStart + lastBreak + 1;
+      }
+      const piece = trimmed.slice(start, end).trim();
+      if(piece) chunks.push(piece);
+      start = end;
+    }
+    return chunks;
+  }
+
+  const state = {
+    files: [],
+    topMode: null,       // 'study' | 'quiz'
+    mode: null,           // 'mc' | 'id' | 'tf' (only used when topMode === 'quiz')
+    numQuestions: 10,
+    difficulty: 'medium',
+    questions: [],
+    currentIndex: 0,
+    score: 0,
+    userAnswers: [],
+    materialLabel: '',
+    cameFromSaved: false,
+    studyGuideText: '',
+    extractedContext: null,  // cached {text, images:[]} — images are folded into text once, see getExtractedContext
+    lastEmptyFiles: [],
+    cancelRequested: false,
+    usageLimitHit: false
+  };
+
+  // ---------- Screen management ----------
+  const screens = ['upload','mode','processing','study','quiz','results','saved','saved-review'];
+  function showScreen(name){
+    screens.forEach(s=>{
+      document.getElementById('screen-'+s).classList.toggle('active', s===name);
+    });
+    if(name !== 'processing'){
+      const cancelRow = document.getElementById('cancelRow');
+      if(cancelRow) cancelRow.style.display = 'none';
+    }
+    const stepperOrder = ['upload','mode','quiz','results'];
+    const mapName = (name === 'processing' || name === 'study') ? 'mode' : name;
+    const stepperEl = document.getElementById('stepper');
+    stepperEl.style.display = stepperOrder.includes(mapName) ? 'flex' : 'none';
+    const curIdx = stepperOrder.indexOf(mapName);
+    const stepEls = Array.from(document.querySelectorAll('#stepper .step'));
+    const connectorEls = Array.from(document.querySelectorAll('#stepper .step-connector'));
+    stepEls.forEach(el=>{
+      const idx = stepperOrder.indexOf(el.getAttribute('data-step'));
+      el.classList.remove('active','done','clickable');
+      if(idx === curIdx) el.classList.add('active');
+      else if(idx < curIdx) el.classList.add('done');
+      // only allow jumping back to a step already passed, and only to the two
+      // reachable screens (upload / mode) — quiz and results depend on live state.
+      if(idx < curIdx && (el.getAttribute('data-step') === 'upload' || el.getAttribute('data-step') === 'mode')){
+        el.classList.add('clickable');
+      }
+    });
+    connectorEls.forEach((el,i)=>{
+      el.classList.toggle('done', i < curIdx);
+    });
+  }
+
+  // ---------- File handling ----------
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const fileListEl = document.getElementById('fileList');
+  const pasteNotes = document.getElementById('pasteNotes');
+  const toModeBtn = document.getElementById('toModeBtn');
+  const uploadHint = document.getElementById('uploadHint');
+  const uploadError = document.getElementById('uploadError');
+
+  dropzone.addEventListener('click', ()=>fileInput.click());
+  dropzone.addEventListener('dragover', e=>{e.preventDefault(); dropzone.classList.add('drag');});
+  dropzone.addEventListener('dragleave', ()=>dropzone.classList.remove('drag'));
+  dropzone.addEventListener('drop', e=>{
+    e.preventDefault();
+    dropzone.classList.remove('drag');
+    addFiles(e.dataTransfer.files);
+  });
+  fileInput.addEventListener('change', e=>{
+    addFiles(e.target.files);
+    fileInput.value = '';
+  });
+
+  function addFiles(fileListObj){
+    Array.from(fileListObj).forEach(file=>{
+      const ext = (file.name.split('.').pop() || '').toLowerCase();
+      const supported = ['pptx','pdf','docx','txt','md','png','jpg','jpeg','webp','gif'].includes(ext);
+      if(!supported){
+        showUploadError(`"${file.name}" isn't a supported type yet — try pptx, pdf, docx, txt, md, or an image.`);
+        return;
+      }
+      state.files.push({id: crypto.randomUUID(), file, name: file.name, ext, size: file.size});
+    });
+    renderFileList();
+    refreshContinueButton();
+  }
+
+  function showUploadError(msg){
+    uploadError.innerHTML = `<div class="error-box">${msg}</div>`;
+    setTimeout(()=>{ uploadError.innerHTML=''; }, 5000);
+  }
+
+  function formatSize(bytes){
+    if(bytes < 1024) return bytes + ' B';
+    if(bytes < 1024*1024) return Math.round(bytes/1024) + ' KB';
+    return (bytes / (1024*1024)).toFixed(1) + ' MB';
+  }
+
+  function renderFileList(){
+    fileListEl.innerHTML = '';
+    state.files.forEach(f=>{
+      const row = document.createElement('div');
+      row.className = 'file-chip';
+      row.innerHTML = `
+        <div class="fc-name">
+          <span class="fc-ext">${f.ext}</span>
+          <span class="fc-label">${f.name}</span>
+        </div>
+        <span class="fc-size">${formatSize(f.size)}</span>
+        <button class="fc-remove" data-id="${f.id}" aria-label="Remove file">&times;</button>
+      `;
+      fileListEl.appendChild(row);
+    });
+    fileListEl.querySelectorAll('.fc-remove').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        state.files = state.files.filter(f=>f.id !== btn.getAttribute('data-id'));
+        renderFileList();
+        refreshContinueButton();
+      });
+    });
+
+    const summaryEl = document.getElementById('fileSummary');
+    if(state.files.length){
+      const totalBytes = state.files.reduce((sum,f)=>sum+(f.size||0), 0);
+      summaryEl.style.display = 'flex';
+      summaryEl.innerHTML = `
+        <span>${state.files.length} file${state.files.length>1?'s':''} · ${formatSize(totalBytes)} total</span>
+        <button id="clearAllFilesBtn">Clear all</button>
+      `;
+      document.getElementById('clearAllFilesBtn').addEventListener('click', ()=>{
+        state.files = [];
+        renderFileList();
+        refreshContinueButton();
+      });
+    } else {
+      summaryEl.style.display = 'none';
+      summaryEl.innerHTML = '';
+    }
+  }
+
+  function refreshContinueButton(){
+    const hasContent = state.files.length > 0 || pasteNotes.value.trim().length > 0;
+    toModeBtn.disabled = !hasContent;
+    uploadHint.style.display = hasContent ? 'none' : 'inline';
+    state.extractedContext = null;
+  }
+  pasteNotes.addEventListener('input', refreshContinueButton);
+
+  document.getElementById('toModeBtn').addEventListener('click', ()=>{
+    showScreen('mode');
+  });
+
+  // ---------- Mode screen ----------
+  const quizModePanel = document.getElementById('quizModePanel');
+  const studyModePanel = document.getElementById('studyModePanel');
+  const generateBtn = document.getElementById('generateBtn');
+
+  document.querySelectorAll('.mode-row[data-topmode]').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      document.querySelectorAll('.mode-row[data-topmode]').forEach(r=>r.classList.remove('selected'));
+      row.classList.add('selected');
+      state.topMode = row.getAttribute('data-topmode');
+      quizModePanel.style.display = state.topMode === 'quiz' ? 'block' : 'none';
+      studyModePanel.style.display = state.topMode === 'study' ? 'block' : 'none';
+      generateBtn.textContent = state.topMode === 'study' ? 'Generate study guide' : 'Generate quiz';
+      refreshGenerateButton();
+    });
+  });
+  document.querySelectorAll('.mode-row.sub[data-mode]').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      document.querySelectorAll('.mode-row.sub[data-mode]').forEach(r=>r.classList.remove('selected'));
+      row.classList.add('selected');
+      state.mode = row.getAttribute('data-mode');
+      refreshGenerateButton();
+    });
+  });
+  document.querySelectorAll('.count-btn[data-count]').forEach(btn=>{
+    if(parseInt(btn.getAttribute('data-count'),10) === state.numQuestions){
+      btn.classList.add('selected');
+    }
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.count-btn[data-count]').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      state.numQuestions = parseInt(btn.getAttribute('data-count'),10);
+    });
+  });
+  document.querySelectorAll('.diff-btn[data-difficulty]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.diff-btn[data-difficulty]').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      state.difficulty = btn.getAttribute('data-difficulty');
+    });
+  });
+  function refreshGenerateButton(){
+    if(state.topMode === 'study'){
+      generateBtn.disabled = false;
+    } else if(state.topMode === 'quiz'){
+      generateBtn.disabled = !state.mode;
+    } else {
+      generateBtn.disabled = true;
+    }
+  }
+  document.getElementById('backToUploadBtn').addEventListener('click', ()=>showScreen('upload'));
+  generateBtn.addEventListener('click', ()=>{
+    if(state.topMode === 'study') runStudyGuideGeneration();
+    else runGeneration();
+  });
+
+  // ---------- Extraction ----------
+  function xmlDecode(str){
+    return str.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+               .replace(/&quot;/g,'"').replace(/&apos;/g,"'");
+  }
+
+  async function extractPptx(file){
+    const buf = await file.arrayBuffer();
+    const zip = await JSZip.loadAsync(buf);
+    const slideNames = Object.keys(zip.files)
+      .filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n))
+      .sort((a,b)=>{
+        const na = parseInt(a.match(/slide(\d+)\.xml/)[1],10);
+        const nb = parseInt(b.match(/slide(\d+)\.xml/)[1],10);
+        return na - nb;
+      });
+    let text = '';
+    for(const name of slideNames){
+      const xml = await zip.file(name).async('string');
+      const matches = xml.match(/<a:t>(.*?)<\/a:t>/g) || [];
+      const slideText = matches.map(m=>xmlDecode(m.replace(/<a:t>|<\/a:t>/g,''))).join(' ');
+      if(slideText.trim()) text += slideText.trim() + '\n';
+    }
+    const mediaNames = Object.keys(zip.files).filter(n=>/^ppt\/media\/.*\.(png|jpe?g)$/i.test(n)).slice(0,4);
+    const images = [];
+    for(const name of mediaNames){
+      const base64 = await zip.file(name).async('base64');
+      const ext = name.split('.').pop().toLowerCase();
+      const mediaType = ext === 'png' ? 'image/png' : 'image/jpeg';
+      images.push({ mediaType, data: base64 });
+    }
+    return { text, images };
+  }
+
+  async function extractPdf(file, setStatus){
+    const buf = await file.arrayBuffer();
+    let pdf;
+    try{
+      pdf = await pdfjsLib.getDocument({data: buf}).promise;
+    }catch(e){
+      console.warn('Could not open PDF', file.name, e);
+      return { text:'', images:[] };
+    }
+
+    // Text is cheap to pull even from a large file, so scan the whole document —
+    // this is what makes sure a 100+ page PDF isn't silently cut down to page 20.
+    const textPageCap = Math.min(pdf.numPages, 150);
+    let text = '';
+    for(let i=1; i<=textPageCap; i++){
+      try{
+        if(setStatus && i % 10 === 0) setStatus(`Reading ${file.name} (page ${i} of ${pdf.numPages})…`);
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const pageText = content.items.map(it=>it.str).join(' ');
+        if(pageText.trim()) text += pageText + '\n';
+      }catch(e){
+        console.warn(`Could not read text on page ${i} of ${file.name}`, e);
+      }
+    }
+
+    // If there's essentially no text layer, this is a scanned document — fall back to
+    // rendering a spread of pages (not just the first few) as images for vision to read.
+    const images = [];
+    if(text.trim().length < 200){
+      const pageCount = pdf.numPages;
+      const sampleCount = Math.min(pageCount, 6);
+      const pageNumbers = new Set();
+      for(let i=0; i<sampleCount; i++){
+        const p = sampleCount === 1 ? 1 : 1 + Math.round((i * (pageCount - 1)) / (sampleCount - 1));
+        pageNumbers.add(p);
+      }
+      let done = 0;
+      for(const pageNum of pageNumbers){
+        try{
+          if(setStatus) setStatus(`Scanning page images in ${file.name} (${++done} of ${pageNumbers.size})…`);
+          const page = await pdf.getPage(pageNum);
+          const baseViewport = page.getViewport({scale: 1});
+          const scale = Math.min(1.4, 1400 / Math.max(baseViewport.width, baseViewport.height));
+          const viewport = page.getViewport({scale: Math.max(scale, 0.3)});
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(viewport.width);
+          canvas.height = Math.round(viewport.height);
+          const ctx = canvas.getContext('2d');
+          await page.render({canvasContext: ctx, viewport}).promise;
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          images.push({ mediaType:'image/jpeg', data: dataUrl.split(',')[1] });
+          canvas.width = 0; canvas.height = 0; // free memory promptly
+        }catch(e){
+          console.warn(`Could not render page ${pageNum} of ${file.name}`, e);
+        }
+      }
+    }
+    return { text, images };
+  }
+
+  async function extractDocx(file){
+    const buf = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({arrayBuffer: buf});
+    return { text: result.value || '', images: [] };
+  }
+
+  async function extractTxt(file){
+    const text = await file.text();
+    return { text, images: [] };
+  }
+
+  function resizeImageFile(file){
+    return new Promise((resolve, reject)=>{
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        img.onload = ()=>{
+          let {width, height} = img;
+          if(width > MAX_IMAGE_DIM || height > MAX_IMAGE_DIM){
+            const scale = MAX_IMAGE_DIM / Math.max(width, height);
+            width = Math.round(width*scale);
+            height = Math.round(height*scale);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          resolve({ mediaType:'image/jpeg', data: dataUrl.split(',')[1] });
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function extractFromEntry(entry, setStatus){
+    setStatus(`Reading ${entry.name}…`);
+    const ext = entry.ext;
+    try{
+      if(ext === 'pptx') return await extractPptx(entry.file);
+      if(ext === 'pdf') return await extractPdf(entry.file, setStatus);
+      if(ext === 'docx') return await extractDocx(entry.file);
+      if(['txt','md'].includes(ext)) return await extractTxt(entry.file);
+      if(['png','jpg','jpeg','webp','gif'].includes(ext)){
+        const img = await resizeImageFile(entry.file);
+        return { text:'', images:[img] };
+      }
+    }catch(err){
+      console.error('Extraction failed for', entry.name, err);
+      return { text:'', images:[] };
+    }
+    return { text:'', images:[] };
+  }
+
+  function buildNothingReadableError(){
+    const names = state.lastEmptyFiles || [];
+    if(names.length){
+      return `<div class="error-box">Couldn't read anything from ${names.map(n=>`"${n}"`).join(', ')}. It may be a scanned or very large file that your browser couldn't fully process — try a smaller export, a text-based PDF, or paste the key notes instead.</div>`;
+    }
+    return '<div class="error-box">Nothing readable was found in those files. Try a different file or paste some notes.</div>';
+  }
+
+  function partialFailureNoticeHtml(){
+    const names = state.lastEmptyFiles || [];
+    if(!names.length) return '';
+    return `<div class="notice-box">Couldn't read ${names.map(n=>`"${n}"`).join(', ')} — this quiz is based on everything else that was readable.</div>`;
+  }
+
+  function buildUsageLimitError(){
+    return '<div class="error-box">You\'ve hit your Claude usage limit for now, so nothing could be generated. Wait a while and try again, or try a smaller question count in the meantime.</div>';
+  }
+
+  function usageLimitNoticeHtml(got, requested){
+    return `<div class="notice-box">Only ${got} of ${requested} questions could be generated before hitting your Claude usage limit — here's what's ready. Wait a while and try again for the rest.</div>`;
+  }
+
+  function fewerThanRequestedNoticeHtml(got, requested){
+    return `<div class="notice-box">Your material only supported ${got} genuinely distinct question${got===1?'':'s'} out of the ${requested} requested — more would have started repeating, so this quiz sticks to what's unique. Add more material for a longer set.</div>`;
+  }
+
+  // ---------- Generation flow ----------
+  const procStatus = document.getElementById('procStatus');
+
+  function initFileProgressList(){
+    const container = document.getElementById('fileProgressList');
+    container.innerHTML = '';
+    state.files.forEach(f=>{
+      const row = document.createElement('div');
+      row.className = 'fp-row fp-pending';
+      row.id = 'fp-' + f.id;
+      row.innerHTML = `<span class="fp-icon">&middot;</span><span class="fp-name">${f.name}</span>`;
+      container.appendChild(row);
+    });
+  }
+
+  function setFileProgressStatus(id, status){
+    const row = document.getElementById('fp-' + id);
+    if(!row) return;
+    row.className = 'fp-row fp-' + status;
+    const icon = row.querySelector('.fp-icon');
+    icon.innerHTML = status === 'active' ? '&hellip;' : status === 'done' ? '&#10003;' : status === 'error' ? '&times;' : '&middot;';
+  }
+
+  // Runs async work over a list with a concurrency cap, so multiple files get
+  // read in parallel (faster with several files) without overwhelming memory
+  // the way processing everything at once would.
+  async function runPool(items, limit, worker){
+    const results = new Array(items.length);
+    let idx = 0;
+    async function next(){
+      while(idx < items.length){
+        if(state.cancelRequested) return;
+        const cur = idx++;
+        results[cur] = await worker(items[cur], cur);
+      }
+    }
+    const workers = Array.from({length: Math.max(1, Math.min(limit, items.length))}, ()=>next());
+    await Promise.all(workers);
+    return results;
+  }
+
+  const EXTRACTION_CONCURRENCY = 3;
+
+  async function getExtractedContext(){
+    if(state.extractedContext) return state.extractedContext;
+
+    let combinedText = pasteNotes.value.trim() ? pasteNotes.value.trim() + '\n\n' : '';
+    let images = [];
+    const emptyFiles = [];
+
+    initFileProgressList();
+
+    const results = await runPool(state.files, EXTRACTION_CONCURRENCY, async (entry)=>{
+      if(state.cancelRequested) return null;
+      setFileProgressStatus(entry.id, 'active');
+      const result = await extractFromEntry(entry, msg => {
+        if(!state.cancelRequested) procStatus.textContent = msg;
+      });
+      const gotText = result.text && result.text.trim().length > 0;
+      const gotImages = result.images && result.images.length > 0;
+      setFileProgressStatus(entry.id, (gotText || gotImages) ? 'done' : 'error');
+      return { entry, result, gotText, gotImages };
+    });
+
+    if(state.cancelRequested){
+      return { text:'', images:[], cancelled:true };
+    }
+
+    results.forEach(r=>{
+      if(!r) return;
+      if(r.gotText) combinedText += r.result.text + '\n\n';
+      if(r.gotImages) images = images.concat(r.result.images);
+      if(!r.gotText && !r.gotImages) emptyFiles.push(r.entry.name);
+    });
+    state.lastEmptyFiles = emptyFiles;
+
+    if(images.length > MAX_IMAGES) images = images.slice(0, MAX_IMAGES);
+    if(combinedText.length > MAX_CONTEXT_CHARS) combinedText = combinedText.slice(0, MAX_CONTEXT_CHARS);
+
+    state.materialLabel = state.files.length ? state.files.map(f=>f.name).join(', ') : (pasteNotes.value.trim().slice(0,60) || 'Pasted notes');
+
+    // Read any images/photos/slide graphics ONCE here and fold what they show into plain
+    // text. Every later step (topic outline, guide sections, question batches) then only
+    // ever sends text — so a large question count doesn't mean resending images dozens of
+    // times, which is what was causing failures with several files at once.
+    if(images.length && !state.cancelRequested){
+      procStatus.textContent = `Looking closely at ${images.length} image${images.length>1?'s':''}…`;
+      try{
+        const visualText = await describeVisualMaterial(images);
+        if(visualText && visualText.trim()){
+          combinedText += '\n\n' + visualText.trim() + '\n\n';
+        }
+      }catch(e){
+        console.warn('Could not describe images, continuing with text only', e);
+      }
+    }
+    if(combinedText.length > MAX_CONTEXT_CHARS) combinedText = combinedText.slice(0, MAX_CONTEXT_CHARS);
+
+    const ctx = { text: combinedText, images: [] };
+    if(combinedText.trim()){
+      state.extractedContext = ctx;
+    }
+    return ctx;
+  }
+
+  const IMAGE_DESCRIBE_BATCH_SIZE = 3;
+
+  async function describeImageBatch(images){
+    const systemPrompt = `You carefully read images from a student's learning materials (photos of notes, slides, textbook pages, diagrams). Transcribe and describe everything relevant in plain text: exact wording where readable, key facts, labels, numbers, and what any diagrams show. Be thorough and accurate — do not skip details, and do not guess at anything you can't actually read. Respond with ONLY the transcription/description text, no preamble or commentary.`;
+    const content = images.map(img => ({ type:'image', source:{ type:'base64', media_type: img.mediaType, data: img.data } }));
+    content.push({ type:'text', text: 'Describe and transcribe all of the images above now.' });
+    return await callClaudeAPI(systemPrompt, content, 1000);
+  }
+
+  // Sending many full-size images in one request was producing malformed
+  // responses (a 200 with a body that failed to parse) — so images are now
+  // described a few at a time instead of all in a single oversized request.
+  async function describeVisualMaterial(images){
+    let combined = '';
+    for(let i=0; i<images.length; i += IMAGE_DESCRIBE_BATCH_SIZE){
+      const batch = images.slice(i, i + IMAGE_DESCRIBE_BATCH_SIZE);
+      if(i > 0) await sleep(BATCH_DELAY_MS);
+      procStatus.textContent = `Looking closely at images ${i+1}-${Math.min(i+batch.length, images.length)} of ${images.length}…`;
+      try{
+        const text = await describeImageBatch(batch);
+        if(text && text.trim()) combined += text.trim() + '\n\n';
+      }catch(e){
+        console.warn('Could not describe an image batch, retrying once:', e.message);
+        await sleep(e.status === 429 ? 2500 : BATCH_DELAY_MS * 2);
+        try{
+          const text2 = await describeImageBatch(batch);
+          if(text2 && text2.trim()) combined += text2.trim() + '\n\n';
+        }catch(e2){
+          console.warn('Retry also failed for an image batch, skipping it:', e2.message);
+        }
+      }
+    }
+    return combined.trim();
+  }
+
+  async function runGeneration(){
+    state.cancelRequested = false;
+    state.usageLimitHit = false;
+    showScreen('processing');
+    document.getElementById('cancelRow').style.display = 'flex';
+    document.getElementById('modeError').innerHTML = '';
+    procStatus.textContent = 'Reading your materials…';
+
+    const { text: combinedText, images, cancelled } = await getExtractedContext();
+    if(cancelled || state.cancelRequested){ showScreen('mode'); return; }
+
+    if(!combinedText.trim() && images.length === 0){
+      showScreen('mode');
+      document.getElementById('modeError').innerHTML = buildNothingReadableError();
+      return;
+    }
+
+    try{
+      const questions = await generateAllQuestions(combinedText, images, state.mode, state.numQuestions);
+      if(state.cancelRequested){ showScreen('mode'); return; }
+
+      if(state.usageLimitHit){
+        if(questions.length === 0){
+          showScreen('mode');
+          document.getElementById('modeError').innerHTML = buildUsageLimitError();
+          return;
+        }
+        state.questions = questions;
+        state.currentIndex = 0;
+        state.score = 0;
+        state.userAnswers = [];
+        state.cameFromSaved = false;
+        document.getElementById('quizNotice').innerHTML = usageLimitNoticeHtml(questions.length, state.numQuestions);
+        startQuiz();
+        return;
+      }
+
+      if(!questions.length) throw new Error('empty');
+      state.questions = questions;
+      state.currentIndex = 0;
+      state.score = 0;
+      state.userAnswers = [];
+      state.cameFromSaved = false;
+      document.getElementById('quizNotice').innerHTML =
+        partialFailureNoticeHtml() +
+        (questions.length < state.numQuestions ? fewerThanRequestedNoticeHtml(questions.length, state.numQuestions) : '');
+      startQuiz();
+    }catch(err){
+      console.error(err);
+      showScreen('mode');
+      document.getElementById('modeError').innerHTML =
+        '<div class="error-box">Couldn\'t generate questions from those materials. Please try again, or add clearer content.</div>';
+    }
+  }
+
+  async function runStudyGuideGeneration(){
+    state.cancelRequested = false;
+    showScreen('processing');
+    document.getElementById('cancelRow').style.display = 'flex';
+    document.getElementById('modeError').innerHTML = '';
+    procStatus.textContent = 'Reading your materials…';
+    state.usageLimitHit = false;
+
+    const { text: combinedText, images, cancelled } = await getExtractedContext();
+    if(cancelled || state.cancelRequested){ showScreen('mode'); return; }
+
+    if(!combinedText.trim() && images.length === 0){
+      showScreen('mode');
+      document.getElementById('modeError').innerHTML = buildNothingReadableError();
+      return;
+    }
+
+    try{
+      procStatus.textContent = 'Scanning your materials for every topic…';
+      let topics = await callClaudeForTopicOutline(combinedText, images);
+      if(!Array.isArray(topics) || topics.length === 0){
+        topics = ['Overview of the material'];
+      }
+      if(topics.length > 14) topics = topics.slice(0, 14);
+
+      // The topic scan above used the full document (one call, so it's cheap).
+      // Each per-topic section below is a repeated call, so cap what's resent
+      // each time to keep those calls fast and reliable on large documents.
+      const STUDY_SECTION_CONTEXT_CAP = 40000;
+      const sectionContext = combinedText.length > STUDY_SECTION_CONTEXT_CAP
+        ? combinedText.slice(0, STUDY_SECTION_CONTEXT_CAP)
+        : combinedText;
+
+      const sections = [];
+      let consecutiveRateLimits = 0;
+      for(let i=0; i<topics.length; i++){
+        if(state.cancelRequested || state.usageLimitHit) break;
+        if(i>0) await sleep(BATCH_DELAY_MS);
+        procStatus.textContent = `Writing section ${i+1} of ${topics.length}: ${topics[i]}…`;
+        let sectionText = '';
+        let lastErr = null;
+        try{
+          sectionText = await callClaudeForGuideSection(sectionContext, images, topics[i]);
+        }catch(e){
+          lastErr = e;
+          console.warn('Section failed, retrying once:', e.message);
+          await sleep(e.status === 429 ? 3000 : BATCH_DELAY_MS * 2);
+          try{
+            sectionText = await callClaudeForGuideSection(sectionContext, images, topics[i]);
+            lastErr = null;
+          }catch(e2){
+            lastErr = e2;
+            console.warn('Section retry also failed, skipping topic:', e2.message);
+          }
+        }
+        if(lastErr && lastErr.status === 429){
+          consecutiveRateLimits++;
+          if(consecutiveRateLimits >= 2){
+            state.usageLimitHit = true;
+            procStatus.textContent = 'Usage limit reached — finishing up with what was written…';
+            break;
+          }
+        } else if(sectionText){
+          consecutiveRateLimits = 0;
+        }
+        if(sectionText) sections.push(sectionText);
+      }
+      if(state.cancelRequested){ showScreen('mode'); return; }
+
+      if(state.usageLimitHit && sections.length === 0){
+        showScreen('mode');
+        document.getElementById('modeError').innerHTML = buildUsageLimitError();
+        return;
+      }
+
+      const guideText = sections.join('\n\n');
+      state.studyGuideText = guideText;
+      document.getElementById('studyGuideContent').innerHTML = renderStudyGuideMarkdown(guideText);
+      document.getElementById('studyNotice').innerHTML = state.usageLimitHit
+        ? usageLimitNoticeHtml(sections.length, topics.length)
+        : partialFailureNoticeHtml();
+      showScreen('study');
+    }catch(err){
+      console.error(err);
+      showScreen('mode');
+      document.getElementById('modeError').innerHTML =
+        '<div class="error-box">Couldn\'t put together a study guide from those materials. Please try again, or add clearer content.</div>';
+    }
+  }
+
+  function buildMaterialBlocks(contextText, images){
+    const content = [];
+    if(contextText && contextText.trim()){
+      content.push({ type:'text', text: `Learning material (extracted text):\n\n${contextText}` });
+    }
+    images.forEach(img=>{
+      content.push({ type:'image', source:{ type:'base64', media_type: img.mediaType, data: img.data } });
+    });
+    return content;
+  }
+
+  // Pass 1: read the whole thing and list every topic it covers, so nothing important gets skipped later.
+  async function callClaudeForTopicOutline(contextText, images){
+    const systemPrompt = `You are a meticulous study assistant. Carefully scan the ENTIRE learning material provided — every page, slide, or section — and list every major topic, concept, or section it covers, in the order they appear. Do not skip minor-looking but substantively important topics (definitions, exceptions, examples, dates, formulas, named parts, etc.). Do not pad the list with near-duplicate or trivial entries. Return ONLY a JSON array of short topic titles (3-8 words each) — no markdown fences, no commentary, no numbering.`;
+
+    const content = buildMaterialBlocks(contextText, images);
+    content.push({ type:'text', text: 'List the topics now, covering the material completely and in order.' });
+
+    const textOut = await callClaudeAPI(systemPrompt, content, 1000);
+    return extractJsonArray(textOut);
+  }
+
+  // Pass 2: one focused, source-checked section per topic — keeps each call small and accurate.
+  async function callClaudeForGuideSection(contextText, images, topic){
+    const systemPrompt = `You are a meticulous study assistant writing one section of a larger study guide, focused only on the topic: "${topic}". Re-read the learning material carefully and base this section strictly and only on facts explicitly present in it — do not invent, guess, or add outside knowledge. Be thorough: include every relevant detail, definition, example, number, or exception the material gives for this topic, so nothing important is left out. If the material only mentions this topic briefly, keep the section proportionally short rather than inventing extra content. Format as: one "## " heading with the topic title, then short paragraphs and "- " bullet points for key terms, facts, or definitions. Bold important terms with **double asterisks**. Respond with ONLY that section's content — no preamble, no commentary, no closing remarks.`;
+
+    const content = buildMaterialBlocks(contextText, images);
+    content.push({ type:'text', text: `Write the section for "${topic}" now, based only on the material above.` });
+
+    const textOut = await callClaudeAPI(systemPrompt, content, 1000);
+    return textOut.trim();
+  }
+
+  function escapeHtml(str){
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function renderStudyGuideMarkdown(raw){
+    const lines = escapeHtml(raw).split('\n');
+    let html = '';
+    let inList = false;
+    function closeList(){ if(inList){ html += '</ul>'; inList = false; } }
+    lines.forEach(line=>{
+      const trimmed = line.trim();
+      if(!trimmed){ closeList(); return; }
+      let m;
+      if((m = trimmed.match(/^##\s+(.*)$/))){
+        closeList();
+        html += `<h2>${inlineMd(m[1])}</h2>`;
+      } else if((m = trimmed.match(/^#\s+(.*)$/))){
+        closeList();
+        html += `<h2>${inlineMd(m[1])}</h2>`;
+      } else if((m = trimmed.match(/^[-*]\s+(.*)$/))){
+        if(!inList){ html += '<ul>'; inList = true; }
+        html += `<li>${inlineMd(m[1])}</li>`;
+      } else {
+        closeList();
+        html += `<p>${inlineMd(trimmed)}</p>`;
+      }
+    });
+    closeList();
+    return html;
+  }
+
+  function inlineMd(str){
+    return str.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  }
+
+  // Recovers as many complete {...} objects as possible from a JSON array string,
+  // even if the response was cut off mid-string (so a truncated batch still yields usable questions).
+  function salvageJsonObjects(text){
+    const results = [];
+    let depth = 0, inString = false, escape = false, start = -1;
+    for(let i=0;i<text.length;i++){
+      const ch = text[i];
+      if(inString){
+        if(escape) escape = false;
+        else if(ch === '\\') escape = true;
+        else if(ch === '"') inString = false;
+        continue;
+      }
+      if(ch === '"'){ inString = true; continue; }
+      if(ch === '{'){ if(depth === 0) start = i; depth++; }
+      else if(ch === '}'){
+        depth--;
+        if(depth === 0 && start !== -1){
+          const objStr = text.slice(start, i+1);
+          try{ results.push(JSON.parse(objStr)); }catch(e){ /* skip broken object */ }
+          start = -1;
+        }
+      }
+    }
+    return results;
+  }
+
+  function extractJsonArray(rawText){
+    const cleaned = rawText.replace(/```json/gi,'').replace(/```/g,'').trim();
+    try{
+      const parsed = JSON.parse(cleaned);
+      if(Array.isArray(parsed)) return parsed;
+    }catch(e){ /* fall through to salvage */ }
+    return salvageJsonObjects(cleaned);
+  }
+
+  const QUESTION_CHUNK_SIZE = 11000;
+
+  // Distributes `total` questions across chunks roughly proportional to each
+  // chunk's length, guaranteeing every chunk gets at least 1 (when possible)
+  // so no section of a big document is skipped entirely.
+  function allocateAcrossChunks(chunks, total){
+    if(chunks.length === 0) return [];
+    if(chunks.length >= total){
+      // more chunks than questions requested — spread 1 question across the
+      // first `total` chunks so coverage stays spread across the document.
+      return chunks.map((c,i)=> i < total ? 1 : 0);
+    }
+    const totalChars = chunks.reduce((s,c)=>s+c.length, 0) || 1;
+    let allocations = chunks.map(c => Math.max(1, Math.round(total * (c.length / totalChars))));
+    let sum = allocations.reduce((a,b)=>a+b, 0);
+    while(sum > total){
+      const maxIdx = allocations.indexOf(Math.max(...allocations));
+      if(allocations[maxIdx] <= 1) break;
+      allocations[maxIdx]--; sum--;
+    }
+    while(sum < total){
+      const minIdx = allocations.indexOf(Math.min(...allocations));
+      allocations[minIdx]++; sum++;
+    }
+    return allocations;
+  }
+
+  // Word-set similarity used to catch near-duplicate questions (not just exact
+  // text matches) across batches and chunks.
+  function questionWordSet(text){
+    return new Set(normalize(text).split(' ').filter(w => w.length > 2));
+  }
+
+  function isDuplicateQuestion(qText, seenSets){
+    const qSet = questionWordSet(qText);
+    if(qSet.size === 0) return false;
+    for(const s of seenSets){
+      let intersection = 0;
+      qSet.forEach(w => { if(s.has(w)) intersection++; });
+      const union = new Set([...qSet, ...s]).size;
+      if(union && intersection / union > 0.6) return true;
+    }
+    return false;
+  }
+
+  function allocateEvenly(n, total){
+    if(n === 0) return [];
+    if(n >= total){
+      return Array.from({length:n}, (_,i)=> i < total ? 1 : 0);
+    }
+    const base = Math.floor(total / n);
+    const remainder = total - base * n;
+    return Array.from({length:n}, (_,i)=> base + (i < remainder ? 1 : 0));
+  }
+
+  // Runs the request/backoff/dedup loop for one unit of material (a topic or a
+  // raw text chunk) until it reaches `unitTotal` accepted questions or gives up.
+  // Mutates `all`, `seenSets`, `recentQuestionTexts` in place; `ctx` carries
+  // state (first-call flag, rate-limit streak) across units.
+  async function runQuestionBatchLoop(unitContext, focusTopic, mode, unitTotal, all, seenSets, recentQuestionTexts, progressLabelFn, ctx){
+    let got = 0, stall = 0, emptyStreak = 0;
+    while(got < unitTotal && stall < 3 && emptyStreak < 3){
+      if(state.cancelRequested || state.usageLimitHit) break;
+      if(!ctx.firstCall) await sleep(BATCH_DELAY_MS);
+      ctx.firstCall = false;
+
+      const remaining = unitTotal - got;
+      const thisBatch = Math.min(BATCH_SIZE, remaining + (remaining > 1 ? 1 : 0));
+      procStatus.textContent = progressLabelFn(all.length, Math.min(remaining, thisBatch));
+
+      const avoidList = recentQuestionTexts.slice(-25);
+      let batch = [], lastErr = null;
+      try{
+        batch = await callClaudeForQuestions(unitContext, [], mode, thisBatch, avoidList, focusTopic);
+      }catch(e){
+        lastErr = e;
+        console.warn('Batch failed, retrying once:', e.message);
+        await sleep(e.status === 429 ? 3000 : BATCH_DELAY_MS * 2);
+        try{
+          batch = await callClaudeForQuestions(unitContext, [], mode, Math.max(1, Math.ceil(thisBatch/2)), avoidList, focusTopic);
+          lastErr = null;
+        }catch(e2){
+          lastErr = e2;
+          console.warn('Retry also failed:', e2.message);
+          batch = [];
+        }
+      }
+
+      if(lastErr && lastErr.status === 429){
+        ctx.consecutiveRateLimits++;
+        if(ctx.consecutiveRateLimits >= 2){
+          state.usageLimitHit = true;
+          procStatus.textContent = 'Usage limit reached — finishing up with what was generated…';
+          break;
+        }
+      } else if(batch.length > 0){
+        ctx.consecutiveRateLimits = 0;
+      }
+
+      if(!Array.isArray(batch) || batch.length === 0){ stall++; emptyStreak++; continue; }
+
+      const unique = [];
+      for(const q of batch){
+        const qText = q && q.question ? q.question : '';
+        if(!qText || isDuplicateQuestion(qText, seenSets)) continue;
+        seenSets.push(questionWordSet(qText));
+        recentQuestionTexts.push(qText);
+        unique.push(q);
+      }
+      if(unique.length === 0){ stall++; emptyStreak++; continue; }
+
+      stall = 0; emptyStreak = 0;
+      got += unique.length;
+      all.push(...unique);
+    }
+  }
+
+  const QUIZ_TOPIC_CONTEXT_CAP = 40000;
+
+  async function generateAllQuestions(contextText, images, mode, total){
+    // Pass 1: find the real topics in the material (same scan Study Mode uses) and
+    // generate questions scoped to one topic at a time, so each batch can dig into
+    // that topic specifically instead of skimming an arbitrary slice of raw text.
+    let topics = [];
+    try{
+      procStatus.textContent = 'Scanning your materials for every topic…';
+      const raw = await callClaudeForTopicOutline(contextText, images);
+      if(Array.isArray(raw)) topics = raw.filter(t => t && String(t).trim());
+    }catch(e){
+      console.warn('Topic scan failed, falling back to section-based generation:', e.message);
+    }
+    if(topics.length > 16) topics = topics.slice(0, 16);
+
+    const all = [];
+    const seenSets = [];
+    const recentQuestionTexts = [];
+    const ctx = { firstCall: true, consecutiveRateLimits: 0 };
+
+    if(topics.length > 0){
+      const topicContext = contextText.length > QUIZ_TOPIC_CONTEXT_CAP
+        ? contextText.slice(0, QUIZ_TOPIC_CONTEXT_CAP)
+        : contextText;
+      const allocations = allocateEvenly(topics.length, total);
+      for(let t = 0; t < topics.length; t++){
+        if(state.cancelRequested || state.usageLimitHit) break;
+        const topicTotal = allocations[t];
+        if(!topicTotal) continue;
+        const label = topics[t];
+        await runQuestionBatchLoop(
+          topicContext, label, mode, topicTotal, all, seenSets, recentQuestionTexts,
+          (gotSoFar, thisAmt) => `Topic ${t+1} of ${topics.length} (${label}) — writing questions ${gotSoFar+1}–${gotSoFar+thisAmt} of ${total}…`,
+          ctx
+        );
+      }
+    }
+
+    // Pass 2 (top-up / fallback): if the topic scan failed entirely, or the topic
+    // pass fell short of the requested total, cover any remaining amount with
+    // plain text chunks so a real problem elsewhere doesn't mean zero questions.
+    if(all.length < total && !state.cancelRequested && !state.usageLimitHit){
+      const stillNeeded = total - all.length;
+      const chunks = splitIntoChunks(contextText, QUESTION_CHUNK_SIZE);
+      if(chunks.length > 0){
+        const allocations = allocateAcrossChunks(chunks, stillNeeded);
+        for(let c = 0; c < chunks.length; c++){
+          if(state.cancelRequested || state.usageLimitHit) break;
+          const chunkTotal = allocations[c];
+          if(!chunkTotal) continue;
+          await runQuestionBatchLoop(
+            chunks[c], null, mode, chunkTotal, all, seenSets, recentQuestionTexts,
+            (gotSoFar, thisAmt) => `Writing questions ${gotSoFar+1}–${gotSoFar+thisAmt} of ${total}…`,
+            ctx
+          );
+        }
+      }
+    }
+
+    return all.slice(0, total);
+  }
+
+  async function callClaudeForQuestions(contextText, images, mode, count, avoidList, focusTopic){
+    let schema;
+    if(mode === 'mc' || mode === 'matching'){
+      const framing = mode === 'matching'
+        ? 'Each question presents one term from the material and asks which of four definitions/descriptions correctly matches it (the other three should be plausible but incorrect terms/definitions from the same general topic).'
+        : '';
+      schema = `Return a JSON array of exactly ${count} multiple-choice questions. ${framing} Each item must look like: {"question": string, "options": [string, string, string, string], "correctIndex": integer from 0 to 3, "explanation": string under 15 words explaining why the correct option is correct}. Keep each option short (a few words).`;
+    } else if(mode === 'tf'){
+      schema = `Return a JSON array of exactly ${count} true-or-false statements. Each item must look like: {"question": string (the statement to judge), "isTrue": boolean, "explanation": string under 15 words explaining why the statement is true or false}.`;
+    } else if(mode === 'fillblank'){
+      schema = `Return a JSON array of exactly ${count} fill-in-the-blank questions. Each "question" must be a sentence taken or adapted directly from the material with one key term or phrase replaced by "_____". Each item must look like: {"question": string (sentence with a "_____" blank), "answer": string (the missing word/phrase), "acceptableAnswers": [string, ...] (alternate correct phrasings, can be an empty array), "explanation": string under 15 words explaining why that answer is correct}.`;
+    } else {
+      schema = `Return a JSON array of exactly ${count} identification questions. Each item must look like: {"question": string, "answer": string, "acceptableAnswers": [string, ...] (alternate correct phrasings, can be an empty array), "explanation": string under 15 words explaining why that answer is correct}.`;
+    }
+
+    const difficultyGuidance = {
+      easy: 'Keep questions at an EASY difficulty: straightforward recall of definitions, facts, and terminology stated directly in the material.',
+      medium: 'Keep questions at a MEDIUM difficulty: understanding and applying concepts, not just recalling definitions verbatim.',
+      hard: 'Keep questions at a HARD difficulty: analysis, comparisons, cause-and-effect reasoning, or applying a concept to a new scenario — go beyond simple recall.'
+    }[state.difficulty] || '';
+
+    let avoidBlock = '';
+    if(avoidList && avoidList.length){
+      avoidBlock = ` Do not repeat, or write close rewordings of, any of these already-used questions:\n${avoidList.map(q=>`- ${q}`).join('\n')}\n`;
+    }
+
+    const coverageInstruction = focusTopic
+      ? `You have the full learning material below, but this call is dedicated to ONE topic: "${focusTopic}". Dig into that topic specifically and go deep rather than staying surface-level: cover its definition, how it works or why it happens (mechanism/cause), its relationship to other concepts mentioned nearby, specific examples or numbers the material gives, exceptions or edge cases, and how it's applied — using only whatever depth the material actually provides. Ignore other unrelated topics in the material for this batch. Vary the angle from question to question so consecutive questions don't all probe the same single fact about "${focusTopic}".`
+      : `Actively broaden coverage: pull from different facts, sentences, and details across the whole excerpt rather than clustering around the same one or two points, and vary the angle from question to question — definitions, examples, causes/effects, comparisons, numbers, exceptions, applications.`;
+
+    const systemPrompt = `You are a study assistant that writes quiz questions strictly grounded in the learning material provided by the user. Never invent facts that are not supported by the material. ${coverageInstruction} ${difficultyGuidance} Keep all text concise.${avoidBlock} If the material genuinely does not contain enough distinct substance to support ${count} non-repetitive, meaningfully different questions, return fewer rather than repeating or padding — depth and variety matter more than hitting the exact count. ${schema} Respond with ONLY the JSON array — no markdown code fences, no preamble, no commentary, no trailing text.`;
+
+    const content = buildMaterialBlocks(contextText, images);
+    content.push({ type:'text', text: focusTopic
+      ? `Generate up to ${count} questions now, focused specifically on "${focusTopic}", based only on the material above.`
+      : `Generate up to ${count} questions now, based only on the material above.` });
+
+    const textOut = await callClaudeAPI(systemPrompt, content, 1000);
+    return extractJsonArray(textOut);
+  }
+
+  // ---------- Quiz screen ----------
+  const questionText = document.getElementById('questionText');
+  const optionsArea = document.getElementById('optionsArea');
+  const feedbackEl = document.getElementById('feedback');
+  const quizActionRow = document.getElementById('quizActionRow');
+  const nextBtn = document.getElementById('nextBtn');
+  const progressFill = document.getElementById('progressFill');
+  const quizPosition = document.getElementById('quizPosition');
+  const quizScore = document.getElementById('quizScore');
+
+  function startQuiz(){
+    showScreen('quiz');
+    renderQuestion();
+  }
+
+  function normalize(str){
+    return str.toLowerCase().trim().replace(/[^\w\s]/g,'').replace(/\s+/g,' ');
+  }
+
+  function levenshtein(a,b){
+    const m=a.length, n=b.length;
+    const dp = Array.from({length:m+1},()=>new Array(n+1).fill(0));
+    for(let i=0;i<=m;i++) dp[i][0]=i;
+    for(let j=0;j<=n;j++) dp[0][j]=j;
+    for(let i=1;i<=m;i++){
+      for(let j=1;j<=n;j++){
+        dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+      }
+    }
+    return dp[m][n];
+  }
+
+  function isCloseMatch(user, correct){
+    const u = normalize(user), c = normalize(correct);
+    if(!u) return false;
+    if(u === c) return true;
+    const dist = levenshtein(u,c);
+    return dist <= Math.max(1, Math.floor(c.length*0.15));
+  }
+
+  function renderQuestion(){
+    const q = state.questions[state.currentIndex];
+    feedbackEl.style.display = 'none';
+    quizActionRow.style.display = 'none';
+    questionText.textContent = q.question;
+    quizPosition.textContent = `Question ${state.currentIndex+1} of ${state.questions.length}`;
+    quizScore.textContent = `Score: ${state.score}`;
+    progressFill.style.width = `${(state.currentIndex/state.questions.length)*100}%`;
+    optionsArea.innerHTML = '';
+
+    if(state.mode === 'mc' || state.mode === 'matching'){
+      q.options.forEach((opt, idx)=>{
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = opt;
+        btn.addEventListener('click', ()=>answerMC(idx));
+        optionsArea.appendChild(btn);
+      });
+    } else if(state.mode === 'tf'){
+      ['True','False'].forEach(label=>{
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = label;
+        btn.addEventListener('click', ()=>answerTF(label === 'True'));
+        optionsArea.appendChild(btn);
+      });
+    } else {
+      // 'id' and 'fillblank' both use a free-text answer checked the same way
+      const row = document.createElement('div');
+      row.className = 'id-input-row';
+      row.innerHTML = `
+        <input type="text" id="idAnswerInput" placeholder="Type your answer" autocomplete="off">
+        <button class="primary" id="idSubmitBtn">Check</button>
+      `;
+      optionsArea.appendChild(row);
+      const input = document.getElementById('idAnswerInput');
+      const submit = document.getElementById('idSubmitBtn');
+      const submitFn = ()=>answerID(input.value);
+      submit.addEventListener('click', submitFn);
+      input.addEventListener('keydown', e=>{ if(e.key==='Enter') submitFn(); });
+      setTimeout(()=>input.focus(), 50);
+    }
+  }
+
+  function answerMC(idx){
+    const q = state.questions[state.currentIndex];
+    const buttons = optionsArea.querySelectorAll('.option-btn');
+    buttons.forEach(b=>b.disabled = true);
+    const correct = idx === q.correctIndex;
+    buttons[q.correctIndex].classList.add('correct');
+    if(!correct) buttons[idx].classList.add('incorrect');
+    recordAnswer(correct, q.explanation, q.options[q.correctIndex], q.options[idx]);
+  }
+
+  function answerTF(selectedTrue){
+    const q = state.questions[state.currentIndex];
+    const buttons = optionsArea.querySelectorAll('.option-btn');
+    buttons.forEach(b=>b.disabled = true);
+    const correct = selectedTrue === !!q.isTrue;
+    const correctIdx = q.isTrue ? 0 : 1;
+    const selectedIdx = selectedTrue ? 0 : 1;
+    buttons[correctIdx].classList.add('correct');
+    if(!correct) buttons[selectedIdx].classList.add('incorrect');
+    recordAnswer(correct, q.explanation, q.isTrue ? 'True' : 'False', selectedTrue ? 'True' : 'False');
+  }
+
+  function answerID(value){
+    const q = state.questions[state.currentIndex];
+    const candidates = [q.answer].concat(q.acceptableAnswers || []);
+    const correct = candidates.some(c=>isCloseMatch(value, c));
+    document.getElementById('idAnswerInput').disabled = true;
+    document.getElementById('idSubmitBtn').disabled = true;
+    recordAnswer(correct, q.explanation, q.answer, value);
+  }
+
+  function recordAnswer(correct, explanation, correctAnswerText, userAnswerText){
+    if(correct) state.score++;
+    state.userAnswers.push({ correct, explanation, correctAnswerText, userAnswerText, question: state.questions[state.currentIndex].question });
+    feedbackEl.style.display = 'block';
+    feedbackEl.className = 'feedback ' + (correct ? 'correct' : 'incorrect');
+    feedbackEl.innerHTML = `
+      <div class="fb-verdict">${correct ? 'Correct.' : 'Not quite — the answer is: ' + correctAnswerText}</div>
+      <div class="fb-why-label">Why</div>
+      <div class="fb-why">${explanation || 'No explanation provided.'}</div>
+    `;
+    quizScore.textContent = `Score: ${state.score}`;
+    quizActionRow.style.display = 'flex';
+    nextBtn.textContent = (state.currentIndex === state.questions.length-1) ? 'See results' : 'Next question';
+  }
+
+  nextBtn.addEventListener('click', ()=>{
+    if(state.currentIndex === state.questions.length-1){
+      showResults();
+    } else {
+      state.currentIndex++;
+      renderQuestion();
+    }
+  });
+
+  document.getElementById('exitQuizBtn').addEventListener('click', ()=>{
+    if(confirm('Exit this quiz? Your progress on it will be lost.')){
+      showScreen('mode');
+    }
+  });
+
+  // Keyboard shortcuts while taking a quiz: 1-4 for multiple choice, T/F for
+  // true-or-false, Enter or Space to move on once a question's answered.
+  document.addEventListener('keydown', (e)=>{
+    if(!document.getElementById('screen-quiz').classList.contains('active')) return;
+    if(quizActionRow.style.display !== 'none'){
+      if(e.key === 'Enter' || e.key === ' '){
+        e.preventDefault();
+        nextBtn.click();
+      }
+      return;
+    }
+    const buttons = optionsArea.querySelectorAll('.option-btn');
+    if(state.mode === 'mc' || state.mode === 'matching'){
+      if(n >= 1 && n <= buttons.length && buttons[n-1] && !buttons[n-1].disabled){
+        buttons[n-1].click();
+      }
+    } else if(state.mode === 'tf'){
+      const key = e.key.toLowerCase();
+      if(key === 't' && buttons[0] && !buttons[0].disabled) buttons[0].click();
+      else if(key === 'f' && buttons[1] && !buttons[1].disabled) buttons[1].click();
+    }
+  });
+
+  // ---------- Results ----------
+  function showResults(){
+    progressFill.style.width = '100%';
+    showScreen('results');
+    document.getElementById('finalScore').textContent = `${state.score}/${state.questions.length}`;
+    renderReviewInto(document.getElementById('reviewList'), state.userAnswers);
+    saveCurrentSession();
+
+    const missed = getMissedQuestions(state.questions, state.userAnswers);
+    const practiceMissedBtn = document.getElementById('practiceMissedBtn');
+    if(missed.length > 0){
+      practiceMissedBtn.style.display = 'inline-block';
+      practiceMissedBtn.textContent = `Practice missed questions (${missed.length})`;
+      practiceMissedBtn.onclick = ()=>{
+        state.questions = missed;
+        state.currentIndex = 0;
+        state.score = 0;
+        state.userAnswers = [];
+        document.getElementById('quizNotice').innerHTML = '';
+        startQuiz();
+      };
+    } else {
+      practiceMissedBtn.style.display = 'none';
+    }
+  }
+
+  function getMissedQuestions(questions, answers){
+    return questions.filter((q,i) => answers[i] && !answers[i].correct);
+  }
+
+  function renderReviewInto(container, answers){
+    container.innerHTML = '';
+    answers.forEach(a=>{
+      const item = document.createElement('div');
+      item.className = 'review-item';
+      item.innerHTML = `
+        <div class="review-q">${a.question}</div>
+        <div class="review-a ${a.correct ? 'right' : 'wrong'}">
+          <span class="badge-icon">${a.correct ? '✓' : '✗'}</span>
+          ${a.correct ? 'You got this right.' : 'Correct answer: ' + a.correctAnswerText}
+        </div>
+        <div class="review-why">${a.explanation || ''}</div>
+      `;
+      container.appendChild(item);
+    });
+  }
+
+  document.getElementById('retryBtn').addEventListener('click', ()=>{
+    state.currentIndex = 0;
+    state.score = 0;
+    state.userAnswers = [];
+    startQuiz();
+  });
+
+  document.getElementById('newMaterialBtn').addEventListener('click', ()=>{
+    state.files = [];
+    state.topMode = null;
+    state.mode = null;
+    state.difficulty = 'medium';
+    state.questions = [];
+    state.currentIndex = 0;
+    state.score = 0;
+    state.userAnswers = [];
+    state.studyGuideText = '';
+    state.extractedContext = null;
+    pasteNotes.value = '';
+    document.querySelectorAll('.mode-row').forEach(r=>r.classList.remove('selected'));
+    document.querySelectorAll('.diff-btn[data-difficulty]').forEach(b=>{
+      b.classList.toggle('selected', b.getAttribute('data-difficulty') === 'medium');
+    });
+    quizModePanel.style.display = 'none';
+    studyModePanel.style.display = 'none';
+    generateBtn.textContent = 'Continue';
+    renderFileList();
+    refreshContinueButton();
+    refreshGenerateButton();
+    showScreen('upload');
+  });
+
+  // ---------- Study guide screen navigation ----------
+  document.getElementById('studyBackBtn').addEventListener('click', ()=>showScreen('mode'));
+  document.getElementById('studyToQuizBtn').addEventListener('click', ()=>{
+    state.topMode = 'quiz';
+    document.querySelectorAll('.mode-row[data-topmode]').forEach(r=>{
+      r.classList.toggle('selected', r.getAttribute('data-topmode') === 'quiz');
+    });
+    quizModePanel.style.display = 'block';
+    studyModePanel.style.display = 'none';
+    generateBtn.textContent = 'Generate quiz';
+    refreshGenerateButton();
+    showScreen('mode');
+  });
+
+  // ---------- Persistence (saved quizzes) ----------
+  const storageAvailable = typeof window.storage !== 'undefined';
+
+  async function saveCurrentSession(){
+    if(!storageAvailable) return;
+    try{
+      const list = await loadSessionList();
+      const session = {
+        id: 'session_' + Date.now(),
+        createdAt: Date.now(),
+        mode: state.mode,
+        materialLabel: state.materialLabel,
+        total: state.questions.length,
+        score: state.score,
+        questions: state.questions,
+        results: state.userAnswers
+      };
+      list.unshift(session);
+      if(list.length > 50) list.length = 50;
+      await window.storage.set(STORAGE_KEY, JSON.stringify(list), false);
+    }catch(e){
+      console.warn('Could not save session', e);
+    }
+  }
+
+  async function loadSessionList(){
+    if(!storageAvailable) return [];
+    try{
+      const res = await window.storage.get(STORAGE_KEY, false);
+      if(res && res.value) return JSON.parse(res.value);
+      return [];
+    }catch(e){
+      return [];
+    }
+  }
+
+  async function deleteSession(id){
+    const list = await loadSessionList();
+    const filtered = list.filter(s=>s.id !== id);
+    try{
+      await window.storage.set(STORAGE_KEY, JSON.stringify(filtered), false);
+    }catch(e){ console.warn('Could not delete session', e); }
+    return filtered;
+  }
+
+  function modeDisplayLabel(mode){
+    return { mc:'Multiple choice', tf:'True or false', id:'Identification', matching:'Matching', fillblank:'Fill in the blank' }[mode] || 'Identification';
+  }
+
+  function formatDate(ts){
+    const d = new Date(ts);
+    return d.toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' }) +
+      ' · ' + d.toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
+  }
+
+  async function renderSavedScreen(){
+    const container = document.getElementById('savedList');
+    container.innerHTML = '<div class="empty-note">Loading…</div>';
+    if(!storageAvailable){
+      container.innerHTML = '<div class="empty-note">Saving isn\'t available in this environment right now.</div>';
+      return;
+    }
+    const list = await loadSessionList();
+    if(list.length === 0){
+      container.innerHTML = '<div class="empty-note">No saved quizzes yet — finish one and it\'ll show up here.</div>';
+      return;
+    }
+    container.innerHTML = '';
+    list.forEach(session=>{
+      const row = document.createElement('div');
+      row.className = 'saved-item';
+      const modeLabel = modeDisplayLabel(session.mode);
+      row.innerHTML = `
+        <div class="si-info">
+          <div class="si-title">${session.materialLabel || 'Study session'}</div>
+          <div class="si-meta">${modeLabel} · ${session.score}/${session.total} · ${formatDate(session.createdAt)}</div>
+        </div>
+        <div class="si-actions">
+          <button class="view-btn">View</button>
+          <button class="danger delete-btn">Delete</button>
+        </div>
+      `;
+      row.querySelector('.view-btn').addEventListener('click', ()=>openSavedReview(session));
+      row.querySelector('.delete-btn').addEventListener('click', async ()=>{
+        await deleteSession(session.id);
+        renderSavedScreen();
+      });
+      container.appendChild(row);
+    });
+  }
+
+  let activeSavedSession = null;
+  function openSavedReview(session){
+    activeSavedSession = session;
+    document.getElementById('savedReviewTitle').textContent = session.materialLabel || 'Quiz review';
+    const modeLabel = modeDisplayLabel(session.mode);
+    document.getElementById('savedReviewMeta').textContent =
+      `${modeLabel} · Scored ${session.score}/${session.total} · ${formatDate(session.createdAt)}`;
+    renderReviewInto(document.getElementById('savedReviewList'), session.results);
+
+    const missed = getMissedQuestions(session.questions, session.results);
+    const savedPracticeMissedBtn = document.getElementById('savedPracticeMissedBtn');
+    if(missed.length > 0){
+      savedPracticeMissedBtn.style.display = 'inline-block';
+      savedPracticeMissedBtn.textContent = `Practice missed questions (${missed.length})`;
+      savedPracticeMissedBtn.onclick = ()=>{
+        state.mode = session.mode;
+        state.questions = missed;
+        state.materialLabel = session.materialLabel;
+        state.currentIndex = 0;
+        state.score = 0;
+        state.userAnswers = [];
+        state.cameFromSaved = true;
+        document.getElementById('quizNotice').innerHTML = '';
+        startQuiz();
+      };
+    } else {
+      savedPracticeMissedBtn.style.display = 'none';
+    }
+
+    showScreen('saved-review');
+  }
+
+  document.getElementById('savedLinkBtn').addEventListener('click', ()=>{
+    renderSavedScreen();
+    showScreen('saved');
+  });
+  document.getElementById('savedBackBtn').addEventListener('click', ()=>showScreen('upload'));
+  document.getElementById('savedReviewBackBtn').addEventListener('click', ()=>{
+    renderSavedScreen();
+    showScreen('saved');
+  });
+  document.getElementById('savedRetakeBtn').addEventListener('click', ()=>{
+    if(!activeSavedSession) return;
+    state.mode = activeSavedSession.mode;
+    state.questions = activeSavedSession.questions;
+    state.materialLabel = activeSavedSession.materialLabel;
+    state.currentIndex = 0;
+    state.score = 0;
+    state.userAnswers = [];
+    state.cameFromSaved = true;
+    document.getElementById('quizNotice').innerHTML = '';
+    startQuiz();
+  });
+
+  document.getElementById('cancelProcessingBtn').addEventListener('click', ()=>{
+    state.cancelRequested = true;
+    procStatus.textContent = 'Cancelling…';
+  });
+
+  document.getElementById('brandHomeBtn').addEventListener('click', ()=>showScreen('upload'));
+
+  document.querySelectorAll('#stepper .step').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      if(!el.classList.contains('clickable')) return;
+      showScreen(el.getAttribute('data-step'));
+    });
+  });
+
+  showScreen('upload');
+})();
+</script>
+</body>
+</html>
